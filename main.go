@@ -16,6 +16,7 @@ func main() {
 	config := conf.GetConfig()
 	done := make(chan struct{})
 	go func() {
+		log.Println("node server running")
 		if err := comm.MsgServer(); err != nil {
 			log.Println("run node server error", err)
 			done <- struct{}{}

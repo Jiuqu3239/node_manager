@@ -130,6 +130,7 @@ func SendMsg(url string, msg Message) error {
 
 func TCPServer(msgCh chan<- Message) error {
 	listen, err := net.Listen("tcp", ":"+conf.GetConfig().NodePort)
+	log.Println("run tcp server:", conf.GetConfig().NodePort)
 	if err != nil {
 		close(msgCh)
 		return errors.Wrap(err, "run tcp server error")
@@ -174,7 +175,7 @@ func MsgServer() error {
 	routeTab := &RouteTable{
 		tab: tab,
 	}
-	updateRouteTab(routeTab)
+	go updateRouteTab(routeTab)
 	msgBuf := make(chan Message, len(tab))
 	go func() {
 		err = TCPServer(msgBuf)
@@ -182,10 +183,15 @@ func MsgServer() error {
 	for msg := range msgBuf {
 		switch msg.Type {
 		case MSG_DATA:
-			tab, ok := msg.Data.([]RouteItem)
-			if !ok {
-				log.Println("bad response data")
+			jbytes, err := json.Marshal(msg.Data)
+			if err != nil {
+				log.Println("marshal msg data error")
 				continue
+			}
+			var tab []RouteItem
+			err = json.Unmarshal(jbytes, &tab)
+			if err != nil {
+				log.Println("bad response data")
 			}
 			for _, item := range tab {
 				routeTab.Update(item)
