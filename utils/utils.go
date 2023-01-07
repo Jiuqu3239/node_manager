@@ -30,7 +30,8 @@ func ReadFromFile(path string) ([]byte, error) {
 
 func Post(u string, data url.Values) (JsonResult, error) {
 	var result JsonResult
-	resp, err := http.PostForm(u, url.Values{})
+	fmt.Println(data.Encode())
+	resp, err := http.PostForm(u, data)
 	if err != nil {
 		return result, err
 	}
@@ -38,10 +39,10 @@ func Post(u string, data url.Values) (JsonResult, error) {
 	if err != nil {
 		return result, err
 	}
-
 	err = json.Unmarshal(bytes, &result)
 	if err != nil {
-		return result, err
+		result.Message = string(bytes)
+		return result, nil
 	}
 	if result.Status != "ok" {
 		return result, fmt.Errorf("%s", result.Message)

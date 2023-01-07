@@ -16,7 +16,6 @@ func main() {
 	config := conf.GetConfig()
 	done := make(chan struct{})
 	go func() {
-		log.Println("node server running")
 		if err := comm.MsgServer(); err != nil {
 			log.Println("run node server error", err)
 			done <- struct{}{}
@@ -32,6 +31,7 @@ func main() {
 			if err := comm.Broadcast(msg); err != nil {
 				log.Println("broadcast failed", err)
 			}
+			log.Println("broadcast heartbeat success")
 		}
 	}()
 	if config.Neighbor != "" {

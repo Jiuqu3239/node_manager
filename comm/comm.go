@@ -215,6 +215,7 @@ func MsgServer() error {
 				log.Println("prase message to route item error")
 				continue
 			}
+			log.Println("received peer heartbeat", item)
 			item.FlashTime = time.Now()
 			routeTab.Update(item)
 		}
@@ -226,7 +227,8 @@ func updateRouteTab(rt *RouteTable) {
 	ticker := time.NewTicker(ROUTE_TAB_FLASH_TIME)
 	for t := range ticker.C {
 		tab := rt.GetTable()
-		var addrList []string
+		self := GetSelf()
+		addrList := []string{self.PeerAddr + ":" + self.PeerPort}
 		for _, item := range tab {
 			if t.Sub(item.FlashTime) > ROUTE_TAB_FLASH_TIME*3 {
 				rt.Delete(item)

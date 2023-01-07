@@ -9,7 +9,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-var baseUrl = "http://127.0.0.1:" + conf.GetConfig().PeerPort
+var baseUrl = "http://127.0.0.1:8080"
 
 func UpdateNodeConf(key string, value any) error {
 	bytes, err := utils.ReadFromFile(conf.GetConfig().ConfigPath)
@@ -31,7 +31,7 @@ func UpdateNodeConf(key string, value any) error {
 
 func FlashNodeConf() error {
 	data := url.Values{}
-	data.Set("action", "reload")
+	data.Add("action", "reload")
 	u, _ := url.JoinPath(baseUrl, conf.GetConfig().Group, "reload")
 	_, err := utils.Post(u, data)
 	return errors.Wrap(err, "reload config file error")
