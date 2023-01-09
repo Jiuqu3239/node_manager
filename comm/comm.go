@@ -22,6 +22,7 @@ const (
 const (
 	ROUTE_TAB_PATH       = "./comm/route.json"
 	ROUTE_TAB_FLASH_TIME = 10 * time.Second
+	SCHEME               = "http://"
 )
 
 type RouteItem struct {
@@ -183,15 +184,10 @@ func MsgServer() error {
 	for msg := range msgBuf {
 		switch msg.Type {
 		case MSG_DATA:
-			jbytes, err := json.Marshal(msg.Data)
-			if err != nil {
-				log.Println("marshal msg data error")
-				continue
-			}
 			var tab []RouteItem
-			err = json.Unmarshal(jbytes, &tab)
-			if err != nil {
-				log.Println("bad response data")
+			if err := ParseData(msg.Data, &tab); err != nil {
+				log.Println("bad message data", err)
+				continue
 			}
 			for _, item := range tab {
 				routeTab.Update(item)
@@ -210,8 +206,12 @@ func MsgServer() error {
 			}
 			go SendMsg(url, resp)
 		case MSG_HB:
-			item, ok := msg.Data.(RouteItem)
-			if !ok || item.PeerID == "" || item.PeerAddr == "" || item.PeerPort == "" {
+			var item RouteItem
+			if err := ParseData(msg.Data, &item); err != nil {
+				log.Println("bad message data", err)
+				continue
+			}
+			if item.PeerID == "" || item.PeerAddr == "" || item.PeerPort == "" {
 				log.Println("prase message to route item error")
 				continue
 			}
@@ -225,21 +225,22 @@ func MsgServer() error {
 
 func updateRouteTab(rt *RouteTable) {
 	ticker := time.NewTicker(ROUTE_TAB_FLASH_TIME)
-	for t := range ticker.C {
+	for range ticker.C {
 		tab := rt.GetTable()
 		self := GetSelf()
 		addrList := []string{self.PeerAddr + ":" + self.PeerPort}
 		for _, item := range tab {
-			if t.Sub(item.FlashTime) > ROUTE_TAB_FLASH_TIME*3 {
+			if time.Since(item.FlashTime) > ROUTE_TAB_FLASH_TIME*3 {
 				rt.Delete(item)
 				continue
 			}
-			addr := item.PeerAddr + ":" + item.PeerPort
+			addr := SCHEME + item.PeerAddr + ":" + item.PeerPort
 			addrList = append(addrList, addr)
 		}
 		if !rt.IsUpdate() {
 			continue
 		}
+		addrList = append(addrList, SCHEME+self.PeerAddr+":"+self.PeerPort)
 		if err := rt.FlashTable(); err != nil {
 			log.Println(err)
 		}
@@ -274,10 +275,23 @@ func SaveRouteTable(routeTab []RouteItem) error {
 func GetSelf() RouteItem {
 	config := conf.GetConfig()
 	return RouteItem{
-		PeerID:   config.PeerID,
-		GroupID:  config.Group,
-		PeerAddr: config.PeerAddr,
-		PeerPort: config.PeerPort,
-		NodePort: config.NodePort,
+		PeerID:    config.PeerID,
+		GroupID:   config.Group,
+		PeerAddr:  config.PeerAddr,
+		PeerPort:  config.PeerPort,
+		NodePort:  config.NodePort,
+		FlashTime: time.Now(),
 	}
+}
+
+func ParseData(data any, box any) error {
+	jbytes, err := json.Marshal(data)
+	if err != nil {
+		return err
+	}
+	err = json.Unmarshal(jbytes, box)
+	if err != nil {
+		return err
+	}
+	return nil
 }
